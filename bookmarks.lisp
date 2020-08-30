@@ -45,8 +45,7 @@ already in the database. Returns the ID corresponding to the tag."
     (when tags
       (loop for name in tags
             for tag = (insert-tag name)
-            do (insert-l-bookmark-tag new-bookmark tag))
-      (mapcar #'insert-tag tags))))
+            do (insert-l-bookmark-tag new-bookmark tag)))))
 
 (defun init-database ()
   (mito:connect-toplevel
