@@ -6,6 +6,6 @@
   :license  "Specify license here"
   :version "0.0.1"
   :serial t
-  :depends-on (#:mito)
+  :depends-on (#:mito #:cl-json #:clack #:caveman2 #:djula)
   :components ((:file "package")
                (:file "bookmarks")))
