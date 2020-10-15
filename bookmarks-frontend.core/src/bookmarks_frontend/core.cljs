@@ -1,8 +1,6 @@
 (ns ^:figwheel-hooks bookmarks-frontend.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-   [bookmarks-frontend.components]
-   [bookmarks-frontend.client]
    [goog.dom :as gdom]
    [reagent.core :as reagent :refer [atom]]
    [reagent.dom :as rdom]
@@ -15,6 +13,9 @@
    [reagent-material-ui.core.typography :refer [typography]]
    [reagent-material-ui.core.input-base :refer [input-base]]
    [reagent-material-ui.core.chip :refer [chip]]
+   [reagent-material-ui.core.icon-button :refer [icon-button]]
+   [reagent-material-ui.icons.more-vert :refer [more-vert]]
+   [reagent-material-ui.icons.search :refer [search]]
    [reagent-material-ui.colors :as colors]
    [reagent-material-ui.styles :as styles]
    [cljs.core]
@@ -42,10 +43,24 @@
              :secondary colors/green}})
 
 (defn custom-styles [{:keys [spacing] :as theme}]
-  {:button     {:margin (spacing 1)}
+  {:root {:flexGrow 1}
+   :search {:position "relative"
+            :backgroundColor "yellow"
+            :marginLeft 0
+            :width "100%"
+            }
+   :searchIcon {:padding "0 2"
+                :height "100%"
+                :position "absolute"
+                :pointerEvents "none"
+                :display "flex"
+                :alignItems "center"
+                :justifyContent "center"}
+   :button     {:margin (spacing 1)}
    :text-field {:width        200
                 :margin-left  (spacing 1)
-                :margin-right (spacing 1)}})
+                :margin-right (spacing 1)}
+   })
 
 (def with-custom-styles (styles/with-styles custom-styles))
 
@@ -60,36 +75,50 @@
           (not-empty (cljs.core/re-find filter-re (:url bookmark)))))
     true))
 
+(defn short-printable-url [url]
+  ;; FIXME Should I use styles instead?
+  (take 30 url))
+
 (defn bookmark-component [bookmark]
   [grid
    [paper {:elevation 3 :spacing 2}
     [typography {:variant "body1"}
      [:a {:href (:url bookmark)} (:description bookmark)]]
     [typography {:variant "body2"}
-     (:url bookmark)]
+     (short-printable-url (:url bookmark))]
     (for [tag (:tags bookmark)]
-      [chip {:size "small" :label tag}])]])
+      ^{:key tag} [chip {:size "small" :label tag}])]])
 
 (defn bookmarks-list []
   [grid
    [:div
     (for [bookmark (filter #(bookmark-matches-filter % (:search-filter @app-state))
                            (:bookmarks @app-state))]
-      (bookmark-component bookmark))]])
+      ^{:key bookmark} (bookmark-component bookmark))]])
 
 (defn tags-list []
   [grid
    (for [tag (:tags @app-state)]
-     [chip {:size "small" :label (:name tag)}])])
+     ^{:key tag} [chip {:size "small" :label (:name tag)}])])
 
-(defn appbar []
-  [app-bar {:position "static"}
-   [toolbar {:variant "dense"}
-    [typography {:variant "h6"} "Bookmarks"]
-    [:div
-     [input-base {:placeholder "Search..."
-                  :on-change (fn [evt]
-                               (swap! app-state assoc :search-filter (event-value evt)) )}]]]])
+(defn- appbar []
+  [:div {:class "root"}
+   [app-bar {:position "static"}
+    [toolbar {:variant "dense"}
+     [icon-button {:edge "start"
+                         :class "menuButton"
+                         :color "inherit"
+                     :aria-label "open-drawer"}
+      [more-vert]]
+     [typography {:variant "h6"} "Bookmarks"]
+     [:div {:class "search"}
+      [:div {:class "searchIcon"}
+       [search]]
+      [input-base
+       {:placeholder "Search..."
+        :class "inputInput"
+        :inputProps {:aria-label "search"}
+        :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}]]]]])
 
 (defn main []
   [:<>
