@@ -47,20 +47,13 @@ already in the database. Returns the ID corresponding to the tag."
             for tag = (insert-tag name)
             do (insert-l-bookmark-tag new-bookmark tag)))))
 
-(defun init-database ()
-  (mito:connect-toplevel
-   :sqlite3
-   :database-name #P"/tmp/bookmarks.db"
-   ; #P"~/.quicklisp/local-projects/bookmarks/bookmarks.db"
-   )
-  (mapcar #'mito:ensure-table-exists '(bookmark tag l-bookmark-tag)))
-
 (defun tags (bookmark)
   (mito:select-dao 'tag
     (sxql:where
      (:in :id (mapcar (lambda (obj) (slot-value obj 'tag-id))
                       (mito:select-dao 'l-bookmark-tag
                         (sxql:where (:= :bookmark_id (mito:object-id bookmark)))))))))
+
 
 ;;; JSON Serializers
 
@@ -75,14 +68,16 @@ already in the database. Returns the ID corresponding to the tag."
   (when tag
     `((name . ,(name tag)))))
 
-;;; Tests
-
-;; (insert-tag "personal")
-;; (init-database)
-;; (insert-bookmark "http://stefanorodighiero.net" "My homepage"
-;;                  '(personal homepage))
 
 ;;; Web server
+
+(defun init-database ()
+  (mito:connect-toplevel
+   :sqlite3
+   :database-name #P"/tmp/bookmarks.db"
+   ; #P"~/.quicklisp/local-projects/bookmarks/bookmarks.db"
+   )
+  (mapcar #'mito:ensure-table-exists '(bookmark tag l-bookmark-tag)))
 
 (defparameter *web* (make-instance '<app>))
 
