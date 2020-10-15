@@ -56,16 +56,16 @@ already in the database. Returns the ID corresponding to the tag."
   (mapcar #'mito:ensure-table-exists '(bookmark tag l-bookmark-tag)))
 
 (defun tags (bookmark)
-  ;; TODO
-  ;; select * from tag where id in (select tag_id from l_bookmark_tag where bookmark_id = 1)
-  ;; select * from tag t join l_bookmark_tag l on l.tag_id = t.id where l.bookmark_id = 1
   (mito:select-dao 'tag
-    (sxql:left-join :l_bookmark_tag :on (:= :l_bookmark_tag.tag_id :tag.id))
-    (sxql:where (:l_bookmark_tag.bookmark_id 1))))
+    (sxql:where
+     (:in :id (mapcar (lambda (obj) (slot-value obj 'tag-id))
+                      (mito:select-dao 'l-bookmark-tag
+                        (sxql:where (:= :bookmark_id (mito:object-id bookmark)))))))))
+
+;;; JSON Serializers
 
 (defun bookmark-json (bookmark)
-  (let ((tags '(foo bar
-                baz rest)))
+  (let ((tags (mapcar #'name (tags bookmark))))
     (when bookmark
       `((url . ,(url bookmark))
         (description . ,(description bookmark))
