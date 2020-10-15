@@ -58,7 +58,7 @@ already in the database. Returns the ID corresponding to the tag."
 ;;; JSON Serializers
 
 (defun bookmark-json (bookmark)
-  (let ((tags (mapcar #'name (tags bookmark))))
+  (let ((tags (mapcar #'tag-json (tags bookmark))))
     (when bookmark
       `((url . ,(url bookmark))
         (description . ,(description bookmark))
