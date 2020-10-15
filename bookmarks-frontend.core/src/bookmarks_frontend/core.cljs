@@ -19,13 +19,15 @@
    [reagent-material-ui.colors :as colors]
    [reagent-material-ui.styles :as styles]
    [cljs.core]
+   [clojure.set]
    [cljs-http.client :as http]
    [cljs.core.async :refer [<!]]))
 
 (defonce app-state
   (atom {:bookmarks []
          :tags []
-         :search-filter ""}))
+         :search-filter ""
+         :tag-filter #{}}))
 
 (defn get-bookmarks []
   (go (let [response (<! (http/get "http://localhost:5000/bookmarks"
@@ -68,13 +70,6 @@
   [^js/Event e]
   (.. e -target -value))
 
-(defn bookmark-matches-filter [bookmark search-filter]
-  (if (not-empty search-filter)
-    (let [filter-re (re-pattern search-filter)]
-      (or (not-empty (cljs.core/re-find filter-re (:description bookmark)))
-          (not-empty (cljs.core/re-find filter-re (:url bookmark)))))
-    true))
-
 (defn short-printable-url [url]
   ;; FIXME Should I use styles instead?
   (take 30 url))
@@ -89,11 +84,31 @@
     (for [tag (:tags bookmark)]
       ^{:key tag} [chip {:size "small" :label tag}])]])
 
+(defn has-tags [bookmark]
+  (seq (clojure.set/intersection (set (:tags bookmark)) (:tag-filter @app-state))))
+
+(defn filter-by-tags [bookmarks]
+  (let [tag-filter (:tag-filter @app-state)]
+    (if (seq tag-filter)
+      (seq (filter #(has-tags %) bookmarks))
+      bookmarks)))
+
+(defn bookmark-matches-filter [bookmark search-filter]
+  (if (not-empty search-filter)
+    (let [filter-re (re-pattern search-filter)]
+      (or (not-empty (cljs.core/re-find filter-re (:description bookmark)))
+          (not-empty (cljs.core/re-find filter-re (:url bookmark)))))
+    true))
+
+(defn filter-by-string [bookmarks]
+  (filter #(bookmark-matches-filter % (:search-filter @app-state)) bookmarks))
+
 (defn bookmarks-list []
   [grid
    [:div
-    (for [bookmark (filter #(bookmark-matches-filter % (:search-filter @app-state))
-                           (:bookmarks @app-state))]
+    (for [bookmark (-> (:bookmarks @app-state)
+                       filter-by-tags
+                       filter-by-string)]
       ^{:key bookmark} (bookmark-component bookmark))]])
 
 (defn tags-list []
