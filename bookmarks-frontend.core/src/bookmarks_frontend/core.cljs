@@ -17,14 +17,13 @@
    [reagent-material-ui.core.chip :refer [chip]]
    [reagent-material-ui.colors :as colors]
    [reagent-material-ui.styles :as styles]
-   [reagent-material-ui.styles :as styles]
-   [cljs.core :refer [re-find]]
+   [cljs.core]
    [cljs-http.client :as http]
    [cljs.core.async :refer [<!]]))
 
 (defonce app-state
-  (atom {:bookmarks (bookmarks-frontend.client/get-bookmarks)
-         :tags (bookmarks-frontend.client/get-tags)
+  (atom {:bookmarks []
+         :tags []
          :search-filter ""}))
 
 (defn get-bookmarks []
@@ -118,12 +117,14 @@
 ;; conditionally start your application based on the presence of an "app" element
 ;; this is particularly helpful for testing this ns without launching the app
 (mount-app-element)
+(get-bookmarks)
+(get-tags)
 
 ;; specify reload hook with ^;after-load metadata
 (defn ^:after-load on-reload []
   (mount-app-element)
-  (bookmarks-frontend.client/get-bookmarks)
-  (bookmarks-frontend.client/get-tags)
+  (get-bookmarks)
+  (get-tags)
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
