@@ -9,14 +9,14 @@
         :accessor url)
    (description :col-type (or :null :text)
                 :initarg :description
-                :accesson description))
+                :accessor description))
   (:metaclass mito:dao-table-class))
 
 (defclass tag ()
   ((name :col-type :text
          :initarg :name
          :initform (error "You must provide a name for a tag.")
-         :accessor tag))
+         :accessor name))
   (:unique-keys name)
   (:metaclass mito:dao-table-class))
 
@@ -39,13 +39,37 @@ already in the database. Returns the ID corresponding to the tag."
                   :bookmark bookmark
                   :tag tag)))
 
-(defun insert-bookmark (url description &optional tags)
+(defun insert-bookmark (description url &optional tags)
   (let ((new-bookmark (mito:insert-dao
                        (make-instance 'bookmark :url url :description description))))
     (when tags
       (loop for name in tags
             for tag = (insert-tag name)
             do (insert-l-bookmark-tag new-bookmark tag)))))
+
+(defun tags (bookmark)
+  (mito:select-dao 'tag
+    (sxql:where
+     (:in :id (mapcar (lambda (obj) (slot-value obj 'tag-id))
+                      (mito:select-dao 'l-bookmark-tag
+                        (sxql:where (:= :bookmark_id (mito:object-id bookmark)))))))))
+
+
+;;; JSON Serializers
+
+(defun bookmark-json (bookmark)
+  (let ((tags (mapcar #'tag-json (tags bookmark))))
+    (when bookmark
+      `((url . ,(url bookmark))
+        (description . ,(description bookmark))
+        (tags . ,tags)))))
+
+(defun tag-json (tag)
+  (when tag
+    `((name . ,(name tag)))))
+
+
+;;; Web server
 
 (defun init-database ()
   (mito:connect-toplevel
@@ -55,12 +79,48 @@ already in the database. Returns the ID corresponding to the tag."
    )
   (mapcar #'mito:ensure-table-exists '(bookmark tag l-bookmark-tag)))
 
-;;; Tests
+(defparameter *web* (make-instance '<app>))
 
-;; (insert-tag "personal")
-;; (insert-bookmark "http://stefanorodighiero.net" "My homepage"
-;;                  '(personal homepage))
+(defvar *handler* nil)
+  
+(defun start (&rest args &key server port debug &allow-other-keys)
+  (declare (ignore server port debug))
+  (init-database)
+  (when *handler*
+    (restart-case (error "Server is already running.")
+      (restart-server ()
+        :report "Restart the server"
+        (stop))))
+  (setf *handler*
+        (apply #'clackup *web* args)))
 
-;;; Web server
+(defun stop ()
+  (prog1
+      (clack:stop *handler*)
+    (setf *handler* nil)))
 
-;;; TBD
+(defroute "/" ()
+  (render-template* #P"index.tmpl"))
+
+(defroute "/add" ()
+  (render-template* #P"add.tmpl"))
+
+(defroute ("/bookmark" :method :POST) (&key _parsed)
+  (let ((bookmark (cdr (assoc "bookmark" _parsed :test #'string=))))
+    (print bookmark)
+    (insert-bookmark
+     (second (assoc "description" bookmark))
+     (second (assoc "url" bookmark))
+     '(youtube data-engineering functional))))
+
+(defroute "/bookmarks" ()
+  (setf (getf (response-headers *response*) :content-type) "application/json")
+  (setf (getf (response-headers *response*) :access-control-allow-origin) "*")
+  (encode-json-to-string
+   (mapcar #'bookmark-json (mito:retrieve-dao 'bookmark))))
+
+(defroute "/tags" ()
+  (setf (getf (response-headers *response*) :content-type) "application/json")
+  (setf (getf (response-headers *response*) :access-control-allow-origin) "*")  (encode-json-to-string
+   (mapcar #'tag-json (mito:retrieve-dao 'tag))))
+
