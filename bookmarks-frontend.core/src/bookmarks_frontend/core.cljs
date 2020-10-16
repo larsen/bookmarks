@@ -1,28 +1,28 @@
 (ns ^:figwheel-hooks bookmarks-frontend.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
-   [goog.dom :as gdom]
-   [reagent.core :as reagent :refer [atom]]
-   [reagent.dom :as rdom]
-   [reagent-material-ui.core.css-baseline :refer [css-baseline]]
-   [reagent-material-ui.core.container :refer [container]]
-   [reagent-material-ui.core.grid :refer [grid]]
-   [reagent-material-ui.core.app-bar :refer [app-bar]]
-   [reagent-material-ui.core.paper :refer [paper]]
-   [reagent-material-ui.core.toolbar :refer [toolbar]]
-   [reagent-material-ui.core.typography :refer [typography]]
-   [reagent-material-ui.core.input-base :refer [input-base]]
-   [reagent-material-ui.core.chip :refer [chip]]
-   [reagent-material-ui.core.icon-button :refer [icon-button]]
-   [reagent-material-ui.icons.more-vert :refer [more-vert]]
-   [reagent-material-ui.icons.search :refer [search]]
-   [reagent-material-ui.colors :as colors]
-   [reagent-material-ui.styles :as styles]
+   [cljs-http.client :as http]
+   [cljs.core.async :refer [<!]]
    [cljs.core]
    [clojure.set]
    [clojure.string]
-   [cljs-http.client :as http]
-   [cljs.core.async :refer [<!]]))
+   [goog.dom :as gdom]
+   [reagent-material-ui.colors :as colors]
+   [reagent-material-ui.core.app-bar :refer [app-bar]]
+   [reagent-material-ui.core.chip :refer [chip]]
+   [reagent-material-ui.core.container :refer [container]]
+   [reagent-material-ui.core.css-baseline :refer [css-baseline]]
+   [reagent-material-ui.core.grid :refer [grid]]
+   [reagent-material-ui.core.icon-button :refer [icon-button]]
+   [reagent-material-ui.core.input-base :refer [input-base]]
+   [reagent-material-ui.core.paper :refer [paper]]
+   [reagent-material-ui.core.toolbar :refer [toolbar]]
+   [reagent-material-ui.core.typography :refer [typography]]
+   [reagent-material-ui.icons.more-vert :refer [more-vert]]
+   [reagent-material-ui.icons.search :refer [search]]
+   [reagent-material-ui.styles :as styles]
+   [reagent.core :as reagent :refer [atom]]
+   [reagent.dom :as rdom]))
 
 (defonce app-state
   (atom {:bookmarks []
@@ -81,10 +81,23 @@
              (clojure.set/difference tag-filter #{tag-name})
              (clojure.set/union tag-filter #{tag-name})))))
 
-(defn tag-component [tag]
+(defn has-tags [bookmark tags-set]
+  (let [tag-names-set (set (map :name (:tags bookmark)))]
+    (seq (clojure.set/intersection tag-names-set tags-set))))
+
+(defn has-filter-tags [bookmark]
+  (has-tags bookmark (:tag-filter @app-state)))
+
+(defn tag-count-in-bookmarks [tag]
+  (count (filter #(has-tags % #{(:name tag)}) (:bookmarks @app-state))))
+
+(defn tag-component [tag & {:keys [with-count]}]
   (let [tag-name (:name tag)]
     [chip {:size "small"
-           :label tag-name
+           :label (if with-count
+                    (clojure.string/join
+                     " " [tag-name (str (tag-count-in-bookmarks tag))])
+                    tag-name)
            :color (if (contains? (:tag-filter @app-state) tag-name)
                     "secondary"
                     "primary")
@@ -93,7 +106,7 @@
 (defn tags-list []
   [grid
    (for [tag (:tags @app-state)]
-     (tag-component tag))])
+     (tag-component tag :with-count true))])
 
 (defn bookmark-component [bookmark]
   [grid
@@ -105,14 +118,10 @@
     (for [tag (:tags bookmark)]
       (tag-component tag))]])
 
-(defn has-tags [bookmark]
-  (let [tag-names-set (set (map :name (:tags bookmark)))]
-    (seq (clojure.set/intersection tag-names-set (:tag-filter @app-state)))))
-
 (defn filter-by-tags [bookmarks]
   (let [tag-filter (:tag-filter @app-state)]
     (if (seq tag-filter)
-      (seq (filter #(has-tags %) bookmarks))
+      (seq (filter #(has-filter-tags %) bookmarks))
       bookmarks)))
 
 (defn bookmark-matches-filter [bookmark search-filter]
@@ -157,6 +166,7 @@
   [:<>
    [css-baseline]
    [styles/theme-provider (styles/create-mui-theme custom-theme)
+
     [:<>
      (appbar)
      [container {:maxWidth "sm"}
@@ -191,4 +201,3 @@
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
 )
-
