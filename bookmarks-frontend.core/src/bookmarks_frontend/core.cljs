@@ -20,6 +20,7 @@
    [reagent-material-ui.styles :as styles]
    [cljs.core]
    [clojure.set]
+   [clojure.string]
    [cljs-http.client :as http]
    [cljs.core.async :refer [<!]]))
 
@@ -61,8 +62,7 @@
    :button     {:margin (spacing 1)}
    :text-field {:width        200
                 :margin-left  (spacing 1)
-                :margin-right (spacing 1)}
-   })
+                :margin-right (spacing 1)}})
 
 (def with-custom-styles (styles/with-styles custom-styles))
 
@@ -74,6 +74,27 @@
   ;; FIXME Should I use styles instead?
   (take 30 url))
 
+(defn toggle-tag-filter [tag-name]
+  (let [tag-filter (:tag-filter @app-state)]
+    (swap! app-state assoc :tag-filter
+           (if (contains? tag-filter tag-name)
+             (clojure.set/difference tag-filter #{tag-name})
+             (clojure.set/union tag-filter #{tag-name})))))
+
+(defn tag-component [tag]
+  (let [tag-name (:name tag)]
+    [chip {:size "small"
+           :label tag-name
+           :color (if (contains? (:tag-filter @app-state) tag-name)
+                    "secondary"
+                    "primary")
+           :on-click (fn [_] (toggle-tag-filter tag-name))}]))
+
+(defn tags-list []
+  [grid
+   (for [tag (:tags @app-state)]
+     (tag-component tag))])
+
 (defn bookmark-component [bookmark]
   [grid
    [paper {:elevation 3 :spacing 2}
@@ -82,10 +103,11 @@
     [typography {:variant "body2"}
      (short-printable-url (:url bookmark))]
     (for [tag (:tags bookmark)]
-      ^{:key tag} [chip {:size "small" :label tag}])]])
+      (tag-component tag))]])
 
 (defn has-tags [bookmark]
-  (seq (clojure.set/intersection (set (:tags bookmark)) (:tag-filter @app-state))))
+  (let [tag-names-set (set (map :name (:tags bookmark)))]
+    (seq (clojure.set/intersection tag-names-set (:tag-filter @app-state)))))
 
 (defn filter-by-tags [bookmarks]
   (let [tag-filter (:tag-filter @app-state)]
@@ -111,11 +133,6 @@
                        filter-by-string)]
       ^{:key bookmark} (bookmark-component bookmark))]])
 
-(defn tags-list []
-  [grid
-   (for [tag (:tags @app-state)]
-     ^{:key tag} [chip {:size "small" :label (:name tag)}])])
-
 (defn- appbar []
   [:div {:class "root"}
    [app-bar {:position "static"}
@@ -126,6 +143,7 @@
                      :aria-label "open-drawer"}
       [more-vert]]
      [typography {:variant "h6"} "Bookmarks"]
+     [typography (clojure.string/join ", " (:tag-filter @app-state))]
      [:div {:class "search"}
       [:div {:class "searchIcon"}
        [search]]
