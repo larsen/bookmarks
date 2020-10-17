@@ -150,16 +150,20 @@
                                  ^{:key bookmark} (bookmark-component bookmark)))]])}))
 
 (defn search-field []
-  (reagent/create-class
-   {:component-did-mount (fn []
-                           (key/bind! "/" ::my-trigger #(js/console.log "I would focus on the search field")))
-    :reagent-render (fn []
-                      [input-base
-                       {:id "search-field"
-                        :placeholder "Search..."
-                        :class "inputInput"
-                        :inputProps {:aria-label "search"}
-                        :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}])}))
+  (let [search-field! (clojure.core/atom nil)]
+    (reagent/create-class
+     {:component-did-mount
+      ;; FIXME It captures also the "/" character
+      ;; FIXME It should check if the search-field is already triggered
+      ;; FIXME Esc should unfocus (and empty the search field?)
+      (fn [] (key/bind! "/" ::my-trigger (fn [] (.focus (first (gdom/getChildren @search-field!))))))
+      :reagent-render (fn []
+                        [input-base
+                         {:ref (fn [el] (reset! search-field! el))
+                          :placeholder "Search..."
+                          :class "inputInput"
+                          :inputProps {:aria-label "search"}
+                          :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}])})))
 
 (defn appbar []
   [:div {:class "root"}
