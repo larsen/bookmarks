@@ -208,8 +208,6 @@
 ;; this is particularly helpful for testing this ns without launching the app
 (mount-app-element)
 
-(defn install-keybindings []
-  )
 
 ;; specify reload hook with ^;after-load metadata
 (defn ^:after-load on-reload []
