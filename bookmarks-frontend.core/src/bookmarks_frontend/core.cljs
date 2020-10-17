@@ -22,7 +22,8 @@
    [reagent-material-ui.icons.search :refer [search]]
    [reagent-material-ui.styles :as styles]
    [reagent.core :as reagent :refer [atom]]
-   [reagent.dom :as rdom]))
+   [reagent.dom :as rdom]
+   [keybind.core :as key]))
 
 (defonce app-state
   (atom {:bookmarks []
@@ -93,7 +94,8 @@
 
 (defn tag-component [tag & {:keys [with-count]}]
   (let [tag-name (:name tag)]
-    [chip {:size "small"
+    [chip {:key (gensym "tag-")
+           :size "small"
            :label (if with-count
                     (clojure.string/join
                      " " [tag-name (str (tag-count-in-bookmarks tag))])
@@ -104,19 +106,21 @@
            :on-click (fn [_] (toggle-tag-filter tag-name))}]))
 
 (defn tags-list []
-  [grid
-   (for [tag (:tags @app-state)]
-     (tag-component tag :with-count true))])
+  (reagent/create-class {:component-did-mount (fn [] (get-tags))
+                         :reagent-render (fn []
+                                           [grid
+                                            (doall (for [tag (:tags @app-state)]
+                                                     (tag-component tag :with-count true)))])}))
 
 (defn bookmark-component [bookmark]
-  [grid
+  [grid {:key (gensym "bookmark-")}
    [paper {:elevation 3 :spacing 2}
     [typography {:variant "body1"}
      [:a {:href (:url bookmark)} (:description bookmark)]]
     [typography {:variant "body2"}
      (short-printable-url (:url bookmark))]
-    (for [tag (:tags bookmark)]
-      (tag-component tag))]])
+    (doall (for [tag (:tags bookmark)]
+             (tag-component tag)))]])
 
 (defn filter-by-tags [bookmarks]
   (let [tag-filter (:tag-filter @app-state)]
@@ -135,46 +139,56 @@
   (filter #(bookmark-matches-filter % (:search-filter @app-state)) bookmarks))
 
 (defn bookmarks-list []
-  [grid
-   [:div
-    (for [bookmark (-> (:bookmarks @app-state)
-                       filter-by-tags
-                       filter-by-string)]
-      ^{:key bookmark} (bookmark-component bookmark))]])
+  (reagent/create-class
+   {:component-did-mount (fn [] (get-bookmarks))
+    :reagent-render (fn []
+                      [grid
+                       [:div
+                        (doall (for [bookmark (-> (:bookmarks @app-state)
+                                                  filter-by-tags
+                                                  filter-by-string)]
+                                 ^{:key bookmark} (bookmark-component bookmark)))]])}))
 
-(defn- appbar []
+(defn search-field []
+  (reagent/create-class
+   {:component-did-mount (fn []
+                           (key/bind! "/" ::my-trigger #(js/console.log "I would focus on the search field")))
+    :reagent-render (fn []
+                      [input-base
+                       {:id "search-field"
+                        :placeholder "Search..."
+                        :class "inputInput"
+                        :inputProps {:aria-label "search"}
+                        :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}])}))
+
+(defn appbar []
   [:div {:class "root"}
    [app-bar {:position "static"}
     [toolbar {:variant "dense"}
      [icon-button {:edge "start"
-                         :class "menuButton"
-                         :color "inherit"
-                     :aria-label "open-drawer"}
+                   :class "menuButton"
+                   :color "inherit"
+                   :aria-label "open-drawer"}
       [more-vert]]
      [typography {:variant "h6"} "Bookmarks"]
      [typography (clojure.string/join ", " (:tag-filter @app-state))]
      [:div {:class "search"}
       [:div {:class "searchIcon"}
        [search]]
-      [input-base
-       {:placeholder "Search..."
-        :class "inputInput"
-        :inputProps {:aria-label "search"}
-        :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}]]]]])
+      [search-field]]]]])
 
 (defn main []
   [:<>
    [css-baseline]
    [styles/theme-provider (styles/create-mui-theme custom-theme)
-
     [:<>
      (appbar)
      [container {:maxWidth "sm"}
       [grid {:container true}
        [grid {:item true :xs 8}
-        [paper {:elevation 3} (bookmarks-list)]]
+        [paper {:elevation 3} [bookmarks-list]]]
        [grid {:item true :xs 4}
-        [paper {:elevation 3} (tags-list)]]]]]]])
+        [paper {:elevation 3} [tags-list]]]]]]]])
 
 (defn get-app-element []
   (gdom/getElement "app"))
@@ -189,14 +203,13 @@
 ;; conditionally start your application based on the presence of an "app" element
 ;; this is particularly helpful for testing this ns without launching the app
 (mount-app-element)
-(get-bookmarks)
-(get-tags)
+
+(defn install-keybindings []
+  )
 
 ;; specify reload hook with ^;after-load metadata
 (defn ^:after-load on-reload []
   (mount-app-element)
-  (get-bookmarks)
-  (get-tags)
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)
