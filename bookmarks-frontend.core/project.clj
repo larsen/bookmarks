@@ -10,7 +10,8 @@
                  [org.clojure/clojurescript "1.10.773"]
                  [cljs-http "0.1.46"]
                  [reagent "0.10.0" ]
-                 [arttuka/reagent-material-ui "4.11.0-3"]]
+                 [arttuka/reagent-material-ui "4.11.0-3"]
+                 [keybind "2.2.0"]]
 
   :source-paths ["src"]
 
