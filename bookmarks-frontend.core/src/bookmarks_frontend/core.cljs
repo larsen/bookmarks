@@ -16,6 +16,9 @@
    [reagent-material-ui.core.icon-button :refer [icon-button]]
    [reagent-material-ui.core.input-base :refer [input-base]]
    [reagent-material-ui.core.paper :refer [paper]]
+   [reagent-material-ui.core.card :refer [card]]
+   [reagent-material-ui.core.card-header :refer [card-header]]
+   [reagent-material-ui.core.card-content :refer [card-content]]
    [reagent-material-ui.core.toolbar :refer [toolbar]]
    [reagent-material-ui.core.typography :refer [typography]]
    [reagent-material-ui.icons.more-vert :refer [more-vert]]
@@ -31,6 +34,8 @@
          :search-filter ""
          :tag-filter #{}}))
 
+(defonce focused-bookmark (atom 0))
+
 (defn get-bookmarks []
   (go (let [response (<! (http/get "http://localhost:5000/bookmarks"
                                    {:with-credentials? false}))]
@@ -42,8 +47,8 @@
         (swap! app-state assoc :tags (:body response)))))
 
 (def custom-theme
-  {:spacing 2
-   :palette {:primary   colors/orange
+  {:spacing 8
+   :palette {:primary   colors/grey
              :secondary colors/green}})
 
 (defn custom-styles [{:keys [spacing] :as theme}]
@@ -112,10 +117,13 @@
                                             (doall (for [tag (:tags @app-state)]
                                                      (tag-component tag :with-count true)))])}))
 
-(defn bookmark-component [bookmark]
-  [grid {:key (gensym "bookmark-")}
-   [paper {:elevation 3 :spacing 2}
-    [typography {:variant "body1"}
+(defn bookmark-component [counter bookmark]
+  [card {:key (gensym "bookmark-")
+         :variant "outlined"}
+   (when (= counter @focused-bookmark)
+     [card-header {:title "CURRENT!"}])
+   [card-content
+    [typography {:variant "h5"}
      [:a {:href (:url bookmark)} (:description bookmark)]]
     [typography {:variant "body2"}
      (short-printable-url (:url bookmark))]
@@ -138,16 +146,34 @@
 (defn filter-by-string [bookmarks]
   (filter #(bookmark-matches-filter % (:search-filter @app-state)) bookmarks))
 
+(defn visible-bookmarks []
+  (-> (:bookmarks @app-state)
+      filter-by-tags
+      filter-by-string))
+
+(defn focus-next-bookmark []
+  ;; FIXME Needs to take into account
+  ;; the actual size of the bookmarks
+  ;; collection visible to the user!
+  (swap! focused-bookmark inc))
+
+(defn focus-prev-bookmark []
+  (when (> @focused-bookmark 0)
+    (swap! focused-bookmark dec)))
+
 (defn bookmarks-list []
   (reagent/create-class
-   {:component-did-mount (fn [] (get-bookmarks))
-    :reagent-render (fn []
-                      [grid
-                       [:div
-                        (doall (for [bookmark (-> (:bookmarks @app-state)
-                                                  filter-by-tags
-                                                  filter-by-string)]
-                                 ^{:key bookmark} (bookmark-component bookmark)))]])}))
+   {:component-did-mount
+    (fn []
+      (key/bind! "j" ::my-trigger (fn [] (focus-next-bookmark)))
+      (key/bind! "k" ::my-trigger (fn [] (focus-prev-bookmark)))
+      (get-bookmarks))
+    :reagent-render
+    (fn []
+      [grid
+       ;; Using map-indexed because I need a counter
+       ;; to decide when to highlight "@focused-bookmark" item
+       (doall (map-indexed bookmark-component (visible-bookmarks)))])}))
 
 (defn search-field []
   (let [search-field! (clojure.core/atom nil)]
@@ -187,8 +213,8 @@
    [styles/theme-provider (styles/create-mui-theme custom-theme)
     [:<>
      (appbar)
-     [container {:maxWidth "sm"}
-      [grid {:container true}
+     [container {:spacing 2 :padding 2}
+      [grid {:container true :spacing 2}
        [grid {:item true :xs 8}
         [paper {:elevation 3} [bookmarks-list]]]
        [grid {:item true :xs 4}
