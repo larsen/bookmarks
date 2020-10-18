@@ -138,7 +138,7 @@
 
 (defn bookmark-matches-filter [bookmark search-filter]
   (if (not-empty search-filter)
-    (let [filter-re (re-pattern search-filter)]
+    (let [filter-re (re-pattern (clojure.string/join "" ["(?i)" search-filter]))]
       (or (not-empty (cljs.core/re-find filter-re (:description bookmark)))
           (not-empty (cljs.core/re-find filter-re (:url bookmark)))))
     true))
