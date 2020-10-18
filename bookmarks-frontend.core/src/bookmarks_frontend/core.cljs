@@ -126,7 +126,7 @@
    [card-header {:title (:description bookmark)}]
    [card-content
     [typography {:variant "body2"}
-     (short-printable-url (:url bookmark))]
+     [:a {:href (:url bookmark)} (short-printable-url (:url bookmark))]]
     (when (= counter @focused-bookmark-idx)
       [typography {:variant "caption"} "current"])]
    [card-actions
