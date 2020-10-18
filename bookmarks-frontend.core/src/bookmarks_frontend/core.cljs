@@ -26,6 +26,8 @@
    [reagent-material-ui.icons.more-vert :refer [more-vert]]
    [reagent-material-ui.icons.search :refer [search]]
    [reagent-material-ui.styles :as styles]
+   [reagent-material-ui.core.fade :refer [fade]]
+
    [reagent.core :as reagent :refer [atom]]
    [reagent.dom :as rdom]
    [keybind.core :as key]))
@@ -57,21 +59,18 @@
 (defn custom-styles [{:keys [spacing] :as theme}]
   {:root {:flexGrow 1}
    :search {:position "relative"
-            :backgroundColor "yellow"
+            :backgroundColor "white"  ;; (fade colors/green 0.15)
             :marginLeft 0
             :width "100%"
             }
-   :searchIcon {:padding "0 2"
+   :search-icon {:padding (spacing 2)
                 :height "100%"
                 :position "absolute"
                 :pointerEvents "none"
                 :display "flex"
                 :alignItems "center"
                 :justifyContent "center"}
-   :button     {:margin (spacing 1)}
-   :text-field {:width        200
-                :margin-left  (spacing 1)
-                :margin-right (spacing 1)}})
+   :button     {:margin (spacing 1)}})
 
 (def with-custom-styles (styles/with-styles custom-styles))
 
@@ -188,7 +187,7 @@
        ;; to decide when to highlight "@focused-bookmark-idx" item
        (doall (map-indexed bookmark-component (visible-bookmarks)))])}))
 
-(defn search-field []
+(defn search-field [{:keys [classes] :as props}]
   (let [search-field! (clojure.core/atom nil)]
     (reagent/create-class
      {:component-did-mount
@@ -199,12 +198,16 @@
                         (fn []
                           (.focus (first (gdom/getChildren @search-field!))))))
       :reagent-render (fn []
-                        [input-base
-                         {:ref (fn [el] (reset! search-field! el))
-                          :placeholder "Search..."
-                          :class "inputInput"
-                          :inputProps {:aria-label "search"}
-                          :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}])})))
+                        ;; FIXME with this structure it breaks the keybind
+                        [:div {:class (:search classes)}
+                         [:div {:class (:search-icon classes)}
+                          [search]]
+                         [input-base
+                          {:ref (fn [el] (reset! search-field! el))
+                           :placeholder "Search..."
+                           :class (:search classes)
+                           :inputProps {:aria-label "search"}
+                           :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}]])})))
 
 (defn appbar []
   [:div {:class "root"}
@@ -217,10 +220,7 @@
       [more-vert]]
      [typography {:variant "h6"} "Bookmarks"]
      [typography (clojure.string/join ", " (:tag-filter @app-state))]
-     [:div {:class "search"}
-      [:div {:class "searchIcon"}
-       [search]]
-      [search-field]]]]])
+     [(with-custom-styles search-field)]]]])
 
 (defn main []
   [:<>
