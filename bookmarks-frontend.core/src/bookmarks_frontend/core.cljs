@@ -13,12 +13,14 @@
    [reagent-material-ui.core.container :refer [container]]
    [reagent-material-ui.core.css-baseline :refer [css-baseline]]
    [reagent-material-ui.core.grid :refer [grid]]
+   [reagent-material-ui.core.button :refer [button]]
    [reagent-material-ui.core.icon-button :refer [icon-button]]
    [reagent-material-ui.core.input-base :refer [input-base]]
    [reagent-material-ui.core.paper :refer [paper]]
    [reagent-material-ui.core.card :refer [card]]
    [reagent-material-ui.core.card-header :refer [card-header]]
    [reagent-material-ui.core.card-content :refer [card-content]]
+   [reagent-material-ui.core.card-actions :refer [card-actions]]
    [reagent-material-ui.core.toolbar :refer [toolbar]]
    [reagent-material-ui.core.typography :refer [typography]]
    [reagent-material-ui.icons.more-vert :refer [more-vert]]
@@ -32,9 +34,10 @@
   (atom {:bookmarks []
          :tags []
          :search-filter ""
+         :focused-bookmark nil
          :tag-filter #{}}))
 
-(defonce focused-bookmark (atom 0))
+(defonce focused-bookmark-idx (atom 0))
 
 (defn get-bookmarks []
   (go (let [response (<! (http/get "http://localhost:5000/bookmarks"
@@ -48,7 +51,7 @@
 
 (def custom-theme
   {:spacing 8
-   :palette {:primary   colors/grey
+   :palette {:primary   colors/teal
              :secondary colors/green}})
 
 (defn custom-styles [{:keys [spacing] :as theme}]
@@ -78,7 +81,7 @@
 
 (defn short-printable-url [url]
   ;; FIXME Should I use styles instead?
-  (take 30 url))
+  (take 50 url))
 
 (defn toggle-tag-filter [tag-name]
   (let [tag-filter (:tag-filter @app-state)]
@@ -120,13 +123,14 @@
 (defn bookmark-component [counter bookmark]
   [card {:key (gensym "bookmark-")
          :variant "outlined"}
-   (when (= counter @focused-bookmark)
-     [card-header {:title "CURRENT!"}])
+   [card-header {:title (:description bookmark)}]
    [card-content
-    [typography {:variant "h5"}
-     [:a {:href (:url bookmark)} (:description bookmark)]]
     [typography {:variant "body2"}
      (short-printable-url (:url bookmark))]
+    (when (= counter @focused-bookmark-idx)
+      [typography {:variant "caption"} "current"])]
+   [card-actions
+    [button "Link"]
     (doall (for [tag (:tags bookmark)]
              (tag-component tag)))]])
 
@@ -155,11 +159,14 @@
   ;; FIXME Needs to take into account
   ;; the actual size of the bookmarks
   ;; collection visible to the user!
-  (swap! focused-bookmark inc))
+  (swap! focused-bookmark-idx inc)
+  ;; FIXME slow
+  (swap! app-state assoc :focused-bookmark (nth (:bookmarks @app-state) @focused-bookmark-idx)))
 
 (defn focus-prev-bookmark []
-  (when (> @focused-bookmark 0)
-    (swap! focused-bookmark dec)))
+  (when (> @focused-bookmark-idx 0)
+    (swap! focused-bookmark-idx dec)
+    (swap! app-state assoc :focused-bookmark (nth (:bookmarks @app-state) @focused-bookmark-idx))))
 
 (defn bookmarks-list []
   (reagent/create-class
@@ -167,12 +174,18 @@
     (fn []
       (key/bind! "j" ::my-trigger (fn [] (focus-next-bookmark)))
       (key/bind! "k" ::my-trigger (fn [] (focus-prev-bookmark)))
+      (key/bind! "enter" ::my-trigger
+                 (fn []
+                   (let [focused-bookmark (:focused-bookmark @app-state)]
+                     (when focused-bookmark
+                       (print focused-bookmark
+                        )))))
       (get-bookmarks))
     :reagent-render
     (fn []
       [grid
        ;; Using map-indexed because I need a counter
-       ;; to decide when to highlight "@focused-bookmark" item
+       ;; to decide when to highlight "@focused-bookmark-idx" item
        (doall (map-indexed bookmark-component (visible-bookmarks)))])}))
 
 (defn search-field []
@@ -182,7 +195,9 @@
       ;; FIXME It captures also the "/" character
       ;; FIXME It should check if the search-field is already triggered
       ;; FIXME Esc should unfocus (and empty the search field?)
-      (fn [] (key/bind! "/" ::my-trigger (fn [] (.focus (first (gdom/getChildren @search-field!))))))
+      (fn [] (key/bind! "/" ::my-trigger
+                        (fn []
+                          (.focus (first (gdom/getChildren @search-field!))))))
       :reagent-render (fn []
                         [input-base
                          {:ref (fn [el] (reset! search-field! el))
