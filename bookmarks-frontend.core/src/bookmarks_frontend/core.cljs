@@ -45,17 +45,18 @@
 (defn custom-styles [{:keys [spacing] :as theme}]
   {:root {:flexGrow 1}
    :search {:position "relative"
-            :backgroundColor "white"  ;; (fade colors/green 0.15)
+            :backgroundColor (colors/teal 600)   ;; (fade colors/green 0.15)
             :marginLeft 0
-            :width "100%"
-            }
+            :width "100%"}
    :search-icon {:padding (spacing 2)
-                :height "100%"
-                :position "absolute"
-                :pointerEvents "none"
-                :display "flex"
-                :alignItems "center"
-                :justifyContent "center"}
+                 :height "100%"
+                 :position "absolute"
+                 :pointerEvents "none"
+                 :display "flex"
+                 :alignItems "center"
+                 :justifyContent "center"}
+   :input-input {:padding-left "calc(1em + 30px)"
+                 :width "100%"}
    :button     {:margin (spacing 1)}})
 
 (def with-custom-styles (styles/with-styles custom-styles))
@@ -191,7 +192,7 @@
                          [mui/input-base
                           {:ref (fn [el] (reset! search-field! el))
                            :placeholder "Search..."
-                           :class (:search classes)
+                           :class (:input-input classes)
                            :inputProps {:aria-label "search"}
                            :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}]])})))
 
