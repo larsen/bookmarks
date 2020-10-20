@@ -7,22 +7,8 @@
    [clojure.set]
    [clojure.string]
    [goog.dom :as gdom]
+   [reagent-material-ui.components :as mui]
    [reagent-material-ui.colors :as colors]
-   [reagent-material-ui.core.app-bar :refer [app-bar]]
-   [reagent-material-ui.core.chip :refer [chip]]
-   [reagent-material-ui.core.container :refer [container]]
-   [reagent-material-ui.core.css-baseline :refer [css-baseline]]
-   [reagent-material-ui.core.grid :refer [grid]]
-   [reagent-material-ui.core.button :refer [button]]
-   [reagent-material-ui.core.icon-button :refer [icon-button]]
-   [reagent-material-ui.core.input-base :refer [input-base]]
-   [reagent-material-ui.core.paper :refer [paper]]
-   [reagent-material-ui.core.card :refer [card]]
-   [reagent-material-ui.core.card-header :refer [card-header]]
-   [reagent-material-ui.core.card-content :refer [card-content]]
-   [reagent-material-ui.core.card-actions :refer [card-actions]]
-   [reagent-material-ui.core.toolbar :refer [toolbar]]
-   [reagent-material-ui.core.typography :refer [typography]]
    [reagent-material-ui.icons.more-vert :refer [more-vert]]
    [reagent-material-ui.icons.search :refer [search]]
    [reagent-material-ui.styles :as styles]
@@ -101,7 +87,7 @@
 
 (defn tag-component [tag & {:keys [with-count]}]
   (let [tag-name (:name tag)]
-    [chip {:key (gensym "tag-")
+    [mui/chip {:key (gensym "tag-")
            :size "small"
            :label (if with-count
                     (clojure.string/join
@@ -115,21 +101,21 @@
 (defn tags-list []
   (reagent/create-class {:component-did-mount (fn [] (get-tags))
                          :reagent-render (fn []
-                                           [grid
+                                           [mui/grid
                                             (doall (for [tag (:tags @app-state)]
                                                      (tag-component tag :with-count true)))])}))
 
 (defn bookmark-component [counter bookmark]
-  [card {:key (gensym "bookmark-")
+  [mui/card {:key (gensym "bookmark-")
          :variant "outlined"}
-   [card-header {:title (:description bookmark)}]
-   [card-content
-    [typography {:variant "body2"}
+   [mui/card-header {:title (:description bookmark)}]
+   [mui/card-content
+    [mui/typography {:variant "body2"}
      [:a {:href (:url bookmark)} (short-printable-url (:url bookmark))]]
     (when (= counter @focused-bookmark-idx)
-      [typography {:variant "caption"} "current"])]
-   [card-actions
-    [button "Link"]
+      [mui/typography {:variant "caption"} "current"])]
+   [mui/card-actions
+    [mui/button "Link"]
     (doall (for [tag (:tags bookmark)]
              (tag-component tag)))]])
 
@@ -182,7 +168,7 @@
       (get-bookmarks))
     :reagent-render
     (fn []
-      [grid
+      [mui/grid
        ;; Using map-indexed because I need a counter
        ;; to decide when to highlight "@focused-bookmark-idx" item
        (doall (map-indexed bookmark-component (visible-bookmarks)))])}))
@@ -202,7 +188,7 @@
                         [:div {:class (:search classes)}
                          [:div {:class (:search-icon classes)}
                           [search]]
-                         [input-base
+                         [mui/input-base
                           {:ref (fn [el] (reset! search-field! el))
                            :placeholder "Search..."
                            :class (:search classes)
@@ -211,29 +197,29 @@
 
 (defn appbar []
   [:div {:class "root"}
-   [app-bar {:position "static"}
-    [toolbar {:variant "dense"}
-     [icon-button {:edge "start"
+   [mui/app-bar {:position "static"}
+    [mui/toolbar {:variant "dense"}
+     [mui/icon-button {:edge "start"
                    :class "menuButton"
                    :color "inherit"
                    :aria-label "open-drawer"}
       [more-vert]]
-     [typography {:variant "h6"} "Bookmarks"]
-     [typography (clojure.string/join ", " (:tag-filter @app-state))]
+     [mui/typography {:variant "h6"} "Bookmarks"]
+     [mui/typography (clojure.string/join ", " (:tag-filter @app-state))]
      [(with-custom-styles search-field)]]]])
 
 (defn main []
   [:<>
-   [css-baseline]
+   [mui/css-baseline]
    [styles/theme-provider (styles/create-mui-theme custom-theme)
     [:<>
      (appbar)
-     [container {:spacing 2 :padding 2}
-      [grid {:container true :spacing 2}
-       [grid {:item true :xs 8}
-        [paper {:elevation 3} [bookmarks-list]]]
-       [grid {:item true :xs 4}
-        [paper {:elevation 3} [tags-list]]]]]]]])
+     [mui/container {:spacing 2 :padding 2}
+      [mui/grid {:container true :spacing 2}
+       [mui/grid {:item true :xs 8}
+        [mui/paper {:elevation 3} [bookmarks-list]]]
+       [mui/grid {:item true :xs 4}
+        [mui/paper {:elevation 3} [tags-list]]]]]]]])
 
 (defn get-app-element []
   (gdom/getElement "app"))
