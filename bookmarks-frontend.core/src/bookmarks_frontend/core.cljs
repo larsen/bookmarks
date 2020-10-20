@@ -89,15 +89,15 @@
 (defn tag-component [tag & {:keys [with-count]}]
   (let [tag-name (:name tag)]
     [mui/chip {:key (gensym "tag-")
-           :size "small"
-           :label (if with-count
-                    (clojure.string/join
-                     " " [tag-name (str (tag-count-in-bookmarks tag))])
-                    tag-name)
-           :color (if (contains? (:tag-filter @app-state) tag-name)
-                    "secondary"
-                    "primary")
-           :on-click (fn [_] (toggle-tag-filter tag-name))}]))
+               :size "small"
+               :label (if with-count
+                        (clojure.string/join
+                         " " [tag-name (str (tag-count-in-bookmarks tag))])
+                        tag-name)
+               :color (if (contains? (:tag-filter @app-state) tag-name)
+                        "secondary"
+                        "primary")
+               :on-click (fn [_] (toggle-tag-filter tag-name))}]))
 
 (defn tags-list []
   (reagent/create-class {:component-did-mount (fn [] (get-tags))
@@ -108,7 +108,7 @@
 
 (defn bookmark-component [counter bookmark]
   [mui/card {:key (gensym "bookmark-")
-         :variant "outlined"}
+             :variant "outlined"}
    [mui/card-header {:title (:description bookmark)}]
    [mui/card-content
     [mui/typography {:variant "body2"}
@@ -164,8 +164,7 @@
                  (fn []
                    (let [focused-bookmark (:focused-bookmark @app-state)]
                      (when focused-bookmark
-                       (print focused-bookmark
-                        )))))
+                       (print focused-bookmark)))))
       (get-bookmarks))
     :reagent-render
     (fn []
@@ -186,15 +185,21 @@
                           (.focus (first (gdom/getChildren @search-field!))))))
       :reagent-render (fn []
                         ;; FIXME with this structure it breaks the keybind
-                        [:div {:class (:search classes)}
-                         [:div {:class (:search-icon classes)}
-                          [search]]
-                         [mui/input-base
-                          {:ref (fn [el] (reset! search-field! el))
-                           :placeholder "Search..."
-                           :class (:input-input classes)
-                           :inputProps {:aria-label "search"}
-                           :on-change (fn [evt] (swap! app-state assoc :search-filter (event-value evt)))}]])})))
+                        [mui/input-base
+                         {; :ref (fn [el] (reset! search-field! el))
+                          :placeholder "Search..."
+                          :class (:input-input classes)
+                          :inputProps {:aria-label "search"}
+                          :on-change (fn [evt]
+                                       (js/console.log evt)
+                                       (swap! app-state assoc :search-filter
+                                              (event-value evt)))}])})))
+
+(defn search-area [{:keys [classes] :as props}]
+  [:div {:class (:search classes)}
+   [:div {:class (:search-icon classes)}
+    [search]]
+   [(with-custom-styles search-field)]])
 
 (defn appbar []
   [:div {:class "root"}
@@ -207,7 +212,7 @@
       [more-vert]]
      [mui/typography {:variant "h6"} "Bookmarks"]
      [mui/typography (clojure.string/join ", " (:tag-filter @app-state))]
-     [(with-custom-styles search-field)]]]])
+     [(with-custom-styles search-area)]]]])
 
 (defn main []
   [:<>
