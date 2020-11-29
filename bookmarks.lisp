@@ -74,9 +74,7 @@ already in the database. Returns the ID corresponding to the tag."
 (defun init-database ()
   (mito:connect-toplevel
    :sqlite3
-   :database-name #P"/tmp/bookmarks.db"
-   ; #P"~/.quicklisp/local-projects/bookmarks/bookmarks.db"
-   )
+   :database-name (asdf:system-relative-pathname 'bookmarks "db/bookmarks.db"))
   (mapcar #'mito:ensure-table-exists '(bookmark tag l-bookmark-tag)))
 
 (defparameter *web* (make-instance '<app>))
